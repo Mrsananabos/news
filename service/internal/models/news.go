@@ -32,6 +32,15 @@ func (n News) Values() []interface{} {
 	}
 }
 
+// HasPK - говорит Reform, есть ли уже PK у записи
+func (n *News) HasPK() bool {
+	return n.ID != 0 // если ID == 0, значит новая запись
+}
+
+// PKValue и PKPointer - для работы с primary key
+func (n *News) PKValue() interface{}   { return n.ID }
+func (n *News) PKPointer() interface{} { return &n.ID }
+
 // Pointers возвращает указатели на все поля в порядке колонок
 // Нужен для SELECT (сканирование результатов)
 func (n *News) Pointers() []interface{} {

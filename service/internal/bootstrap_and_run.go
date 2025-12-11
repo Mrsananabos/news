@@ -12,6 +12,9 @@ import (
 	"service/pkg/db"
 	"time"
 
+	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/gofiber/fiber/v2/middleware/recover"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
@@ -44,10 +47,20 @@ func NewServer(ctx context.Context, log *logrus.Logger) (*Server, error) {
 		WriteTimeout: time.Duration(cnf.Service.WriteTimeout) * time.Second,
 	})
 
-	// Middleware
-	// app.Use(recover.New())
-	// app.Use(cors.New())
-	// app.Use(handlers.LoggingMiddleware(log))
+	app.Use(recover.New(recover.Config{
+		EnableStackTrace: true,
+		StackTraceHandler: func(c *fiber.Ctx, e interface{}) {
+			log.WithFields(logrus.Fields{
+				"panic":  e,
+				"method": c.Method(),
+				"path":   c.Path(),
+			}).Error("Panic recovered")
+		},
+	}))
+
+	app.Use(logger.New(logger.Config{
+		Format: "[${time}] ${status} - ${method} ${path} ${latency}\n",
+	}))
 
 	handlers.SetupRoutes(app, newsHandler)
 
