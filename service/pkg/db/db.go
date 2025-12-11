@@ -13,7 +13,7 @@ import (
 	"gopkg.in/reform.v1/dialects/postgresql"
 )
 
-func InitReformDB(cnf configs.Database) (*reform.DB, error) {
+func InitReformDB(cnf configs.Database) (*sql.DB, *reform.DB, error) {
 	dbURL := fmt.Sprintf(
 		"postgresql://%s:%s@%s:%s/%s?sslmode=disable",
 		cnf.User,
@@ -25,25 +25,25 @@ func InitReformDB(cnf configs.Database) (*reform.DB, error) {
 
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to database: %w", err)
+		return nil, nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
 	if err = db.Ping(); err != nil {
-		return nil, fmt.Errorf("failed to ping database: %w", err)
+		return nil, nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
 	db.SetMaxOpenConns(cnf.MaxOpenConnection)
 	db.SetConnMaxLifetime(time.Minute * time.Duration(cnf.MaxLifeTime))
 
 	if err = initMigration(db); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	//про логгер подумать
 	logger := log.New(os.Stderr, "SQL: ", log.Flags())
 	reformDB := reform.NewDB(db, postgresql.Dialect, reform.NewPrintfLogger(logger.Printf))
 
-	return reformDB, nil
+	return db, reformDB, nil
 }
 
 func initMigration(db *sql.DB) error {

@@ -7,8 +7,8 @@ import (
 
 // ErrorResponse стандартный формат ответа с ошибкой
 type ErrorResponse struct {
-	Success bool   `json:"Success"`
-	Error   string `json:"Error"`
+	Success bool
+	Error   string
 }
 
 // ErrorHandler глобальный обработчик ошибок
