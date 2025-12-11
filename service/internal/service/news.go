@@ -9,6 +9,7 @@ import (
 
 //go:generate mockery --name=INewsService --output=mocks --outpkg=mocks --case=snake --with-expecter
 type INewsService interface {
+	CreateNews(createForm models.NewsCreateForm) (int64, error)
 	EditNews(newsId uint64, editForm models.NewsEditForm) error
 	ListNews(limit, offset uint64) ([]models.NewsWithCategories, error)
 }
@@ -22,6 +23,10 @@ func NewNewsService(repo repository.INewsRepository, log *logrus.Logger) INewsSe
 		repo: repo,
 		log:  log,
 	}
+}
+
+func (s *NewsService) CreateNews(editForm models.NewsCreateForm) (int64, error) {
+	return s.repo.CreateNews(editForm)
 }
 
 func (s *NewsService) EditNews(newsId uint64, editForm models.NewsEditForm) error {

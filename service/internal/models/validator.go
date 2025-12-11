@@ -13,6 +13,23 @@ var (
 	ErrCategoriesLength = errors.New("categories length must be greater 1")
 )
 
+func (n *NewsCreateForm) Validate() error {
+	if utf8.RuneCountInString(n.Title) < 1 || utf8.RuneCountInString(n.Title) > 255 {
+		return ErrTitleLength
+	}
+
+	if utf8.RuneCountInString(n.Content) < 1 {
+		return ErrContentLength
+	}
+
+	return nil
+}
+
+func (n *NewsCreateForm) Normalize() {
+	n.Title = strings.TrimSpace(n.Title)
+	n.Content = strings.TrimSpace(n.Content)
+}
+
 func (n *NewsEditForm) Validate() error {
 	if n.Title == nil && n.Content == nil && n.Categories == nil {
 		return ErrBodyEmpty

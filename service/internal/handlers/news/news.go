@@ -2,7 +2,7 @@
 package handlers
 
 import (
-	"fmt"
+	"service/internal/apperrors"
 	"service/internal/models"
 	"service/internal/service"
 	"strconv"
@@ -26,51 +26,65 @@ func NewNewsHandler(service service.INewsService, log *logrus.Logger) NewsHandle
 type ErrorResponse struct {
 	Error string `json:"error"`
 }
+type SuccessResponse struct {
+	Success bool
+}
+
+type SuccessResponseCreate struct {
+	Success bool
+	Id      int64
+}
+
+type NewsListsResponse struct {
+	Success bool
+	News    []models.NewsWithCategories
+}
+
+func (h *NewsHandler) CreateNews(c *fiber.Ctx) error {
+	var reqForm models.NewsCreateForm
+	if err := c.BodyParser(&reqForm); err != nil {
+		return apperrors.NewBadRequest("Invalid request body")
+	}
+
+	reqForm.Normalize()
+	if err := reqForm.Validate(); err != nil {
+		return apperrors.NewValidation(err.Error())
+	}
+
+	id, err := h.service.CreateNews(reqForm)
+	if err != nil {
+		return err
+	}
+
+	return c.Status(fiber.StatusOK).JSON(SuccessResponseCreate{
+		Success: true,
+		Id:      id,
+	})
+}
 
 func (h *NewsHandler) EditNews(c *fiber.Ctx) error {
 	idParam := c.Params("id")
 	id, err := strconv.ParseUint(idParam, 10, 64)
 	if err != nil {
-		h.log.Warnf("Неверный ID в параметрах: %s", idParam)
-		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
-			Error: fmt.Sprintf("id is invalid: %s", idParam),
-		})
+		return apperrors.NewBadRequest("Invalid ID format")
 	}
 
 	var editForm models.NewsEditForm
 	if err = c.BodyParser(&editForm); err != nil {
-		h.log.Warnf("Error while parsing request body: %s", err)
-		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
-			Error: "Error while parsing request body",
-		})
+		return apperrors.NewBadRequest("Invalid request body")
 	}
 
 	editForm.Normalize()
-	err = editForm.Validate()
-	if err != nil {
-		h.log.Warn("Не передано ни одного поля для обновления")
-		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
-			Error: fmt.Sprintf("validation failed: %s", err),
-		})
+	if err = editForm.Validate(); err != nil {
+		return apperrors.NewValidation(err.Error())
 	}
 
 	if err = h.service.EditNews(id, editForm); err != nil {
-		h.log.Errorf("Ошибка редактирования новости ID=%d: %v", id, err)
-
-		statusCode := fiber.StatusInternalServerError
-		//if err.Error() == "новость не найдена" {
-		//	statusCode = fiber.StatusNotFound
-		//} else if isValidationError(err) {
-		//	statusCode = fiber.StatusBadRequest
-		//}
-
-		return c.Status(statusCode).JSON(ErrorResponse{
-			Error: err.Error(),
-		})
+		return err
 	}
 
-	return c.JSON(fiber.Map{
-		"Success": true,
+	return c.Status(fiber.StatusOK).JSON(SuccessResponse{
+		Success: true,
 	})
 }
 
@@ -82,10 +96,8 @@ func (h *NewsHandler) ListNews(c *fiber.Ctx) error {
 
 	newsList, err = h.service.ListNews(limit, offset)
 	if err != nil {
-		h.log.Errorf("Ошибка получения списка новостей: %v", err)
-		//почему то null а не пустой массив возвращается
-		return c.Status(fiber.StatusInternalServerError).JSON(models.NewsListsResponse{Success: false, News: newsList})
+		return err
 	}
 
-	return c.Status(fiber.StatusOK).JSON(models.NewsListsResponse{Success: true, News: newsList})
+	return c.Status(fiber.StatusOK).JSON(NewsListsResponse{Success: true, News: newsList})
 }

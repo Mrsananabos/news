@@ -20,7 +20,7 @@ var (
 //go:generate mockery --name=INewsRepository --output=mocks --outpkg=mocks --case=snake --with-expecter
 type INewsRepository interface {
 	GetNews(limit, offset uint64) ([]models.NewsWithCategories, error)
-	//CreateNews(limit int) ([]models.Order, error)
+	CreateNews(createForm models.NewsCreateForm) (int64, error)
 	UpdateNews(newsId uint64, updateFields map[string]interface{}, categories *[]uint64) error
 }
 
@@ -64,6 +64,68 @@ func (r *NewsRepository) GetNews(limit, offset uint64) ([]models.NewsWithCategor
 		return nil, fmt.Errorf("%s: could not get news by limit and offset: %w", opt, err)
 	}
 	return newsList, nil
+}
+
+func (r *NewsRepository) CreateNews(createForm models.NewsCreateForm) (int64, error) {
+	tx, err := r.db.Begin()
+	if err != nil {
+		r.log.WithError(err).Error("Failed to begin transaction")
+		return 0, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback() // откатим, если не закоммитили
+
+	// Создаем объект News для reform
+	news := &models.News{
+		Title:   createForm.Title,
+		Content: createForm.Content,
+	}
+
+	// Используем reform для INSERT
+	// reform.Insert автоматически заполнит ID (BIGSERIAL)
+	if err = tx.Insert(news); err != nil {
+		r.log.WithError(err).WithFields(logrus.Fields{
+			"title": createForm.Title,
+		}).Error("Failed to insert news")
+		return 0, fmt.Errorf("failed to insert news: %w", err)
+	}
+
+	// Получаем ID созданной новости (reform автоматически заполнил его)
+	newsID := news.ID
+
+	r.log.WithFields(logrus.Fields{
+		"news_id": newsID,
+		"title":   news.Title,
+	}).Info("News created successfully")
+
+	// Если Categories переданы и не пустые - добавляем связи
+	if createForm.Categories != nil && len(*createForm.Categories) > 0 {
+		for _, categoryID := range *createForm.Categories {
+			_, err := tx.Exec(
+				"INSERT INTO news_categories (news_id, category_id) VALUES ($1, $2)",
+				newsID, categoryID,
+			)
+			if err != nil {
+				r.log.WithError(err).WithFields(logrus.Fields{
+					"news_id":     newsID,
+					"category_id": categoryID,
+				}).Error("Failed to insert news category")
+				return 0, fmt.Errorf("failed to insert category: %w", err)
+			}
+		}
+
+		r.log.WithFields(logrus.Fields{
+			"news_id":    newsID,
+			"categories": len(*createForm.Categories),
+		}).Info("News categories added")
+	}
+
+	// Коммитим транзакцию
+	if err := tx.Commit(); err != nil {
+		r.log.WithError(err).Error("Failed to commit transaction")
+		return 0, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return newsID, nil
 }
 
 func (r *NewsRepository) UpdateNews(newsId uint64, updateFields map[string]interface{}, categories *[]uint64) error {

@@ -6,6 +6,7 @@ import (
 
 type Config struct {
 	Database Database
+	Service  Service
 	Port     string `envconfig:"PORT" default:":8080"`
 }
 
@@ -17,6 +18,11 @@ type Database struct {
 	Name              string `envconfig:"DB_NAME" required:"true"`
 	MaxOpenConnection int    `envconfig:"DB_MAX_OPEN_CONNECTION" default:"10"`
 	MaxLifeTime       int    `envconfig:"DB_MAX_OPEN_LIFE_TIME" default:"30"`
+}
+
+type Service struct {
+	ReadTimeout  int `envconfig:"SERVICE_READ_TIMEOUT" default:"10"`
+	WriteTimeout int `envconfig:"SERVICE_WRITE_TIMEOUT" default:"10"`
 }
 
 func NewParsedConfig() (Config, error) {

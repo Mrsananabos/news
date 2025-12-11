@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"time"
+
 	//_ "orderService/docs"
 	"os"
 	"os/signal"
@@ -22,25 +24,44 @@ func main() {
 	log.SetFormatter(&logrus.JSONFormatter{})
 	log.SetLevel(logrus.InfoLevel)
 
-	signals := []os.Signal{
-		syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGQUIT,
+	// Контекст для запуска сервера
+	ctx := context.Background()
+
+	// Создаем канал для graceful shutdown
+	shutdown := make(chan os.Signal, 1)
+	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGQUIT)
+
+	// Запускаем сервер
+	server, err := internal.NewServer(ctx, log)
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	ctx, stop := signal.NotifyContext(context.Background(), signals...)
-	defer stop()
-
+	// Запускаем в горутине
+	serverErrors := make(chan error, 1)
 	go func() {
-		internal.RunServer(ctx, log)
+		log.Info("Service starting...")
+		serverErrors <- server.Start()
 	}()
 
-	<-ctx.Done()
-	log.Println("Завершение работы...")
+	// Ожидаем сигнал завершения или ошибку сервера
+	select {
+	case err = <-serverErrors:
+		log.Fatal(err)
+	case sig := <-shutdown:
+		log.Infof("Getting shutdown signal : %v", sig)
 
-	// Выполняем graceful shutdown
-	if err := internal.Stop(); err != nil {
-		log.Printf("Ошибка при shutdown: %v", err)
+		// Создаем контекст с таймаутом для graceful shutdown
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+
+		// Выполняем graceful shutdown
+		if err := server.Stop(ctx); err != nil {
+			log.Errorf("Ошибка при graceful shutdown: %v", err)
+			// Принудительное завершение
+			log.Fatal("Принудительное завершение работы")
+		}
+
+		log.Info("Сервер успешно остановлен")
 	}
-
-	log.Println("Сервер остановлен.")
-
 }

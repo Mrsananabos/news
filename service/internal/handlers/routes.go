@@ -10,11 +10,12 @@ import (
 func SetupRoutes(app *fiber.App, newsHandler handler.NewsHandler) {
 	// API группа с авторизацией
 	//api := app.Group("/api", AuthMiddleware(authToken, log))
-	api := app.Group("/api")
+	api := app.Group("/")
 
 	// Роуты для работы с новостями
-	api.Post("/edit/:id", newsHandler.EditNews)
-	api.Get("/list", newsHandler.ListNews)
+	api.Post("edit/:id", newsHandler.EditNews)
+	api.Get("list", newsHandler.ListNews)
+	api.Post("create", newsHandler.CreateNews)
 }
 
 //import (
