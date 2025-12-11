@@ -89,12 +89,21 @@ func (h *NewsHandler) EditNews(c *fiber.Ctx) error {
 }
 
 func (h *NewsHandler) ListNews(c *fiber.Ctx) error {
-	var newsList []models.NewsWithCategories
-	//добавить валидацию
 	limit, err := strconv.ParseInt(c.Query("limit", "10"), 10, 64)
-	offset, err := strconv.ParseInt(c.Query("offset", "0"), 10, 64)
+	if err != nil {
+		return apperrors.NewBadRequest("limit must be a valid number")
+	}
 
-	newsList, err = h.service.ListNews(limit, offset)
+	offset, err := strconv.ParseInt(c.Query("offset", "0"), 10, 64)
+	if err != nil {
+		return apperrors.NewBadRequest("offset must be a valid number")
+	}
+
+	if err = ValidatePaginationParams(limit, offset); err != nil {
+		return err
+	}
+
+	newsList, err := h.service.ListNews(limit, offset)
 	if err != nil {
 		return err
 	}

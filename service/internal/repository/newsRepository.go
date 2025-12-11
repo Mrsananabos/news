@@ -136,14 +136,12 @@ func (r *NewsRepository) UpdateNews(newsId int64, updateFields map[string]interf
 	}
 
 	if len(updateFields) > 0 {
-		title, ok := updateFields["title"]
-		if !ok {
-			news.Title = title.(string)
+		if title, ok := updateFields["title"]; ok {
+			news.Title = *title.(*string)
 		}
 
-		content, ok := updateFields["content"]
-		if !ok {
-			news.Content = content.(string)
+		if content, ok := updateFields["content"]; ok {
+			news.Content = *content.(*string)
 		}
 
 		if err = tx.Update(news); err != nil {
