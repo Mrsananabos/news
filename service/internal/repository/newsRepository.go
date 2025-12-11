@@ -80,50 +80,38 @@ func (r *NewsRepository) CreateNews(createForm models.NewsCreateForm) (int64, er
 		Content: createForm.Content,
 	}
 
-	// Используем reform для INSERT
-	// reform.Insert автоматически заполнит ID (BIGSERIAL)
-	if err = tx.Insert(news); err != nil {
+	if err = tx.Save(news); err != nil {
 		r.log.WithError(err).WithFields(logrus.Fields{
 			"title": createForm.Title,
 		}).Error("Failed to insert news")
 		return 0, fmt.Errorf("failed to insert news: %w", err)
 	}
 
-	// Получаем ID созданной новости (reform автоматически заполнил его)
 	newsID := news.ID
 
-	r.log.WithFields(logrus.Fields{
-		"news_id": newsID,
-		"title":   news.Title,
-	}).Info("News created successfully")
-
-	// Если Categories переданы и не пустые - добавляем связи
 	if createForm.Categories != nil && len(*createForm.Categories) > 0 {
 		for _, categoryID := range *createForm.Categories {
-			_, err := tx.Exec(
-				"INSERT INTO news_categories (news_id, category_id) VALUES ($1, $2)",
-				newsID, categoryID,
-			)
-			if err != nil {
+			newsCategory := &models.NewsCategory{
+				NewsId:     newsID,
+				CategoryId: categoryID,
+			}
+			if err = tx.Save(newsCategory); err != nil {
 				r.log.WithError(err).WithFields(logrus.Fields{
-					"news_id":     newsID,
-					"category_id": categoryID,
+					"title": createForm.Title,
 				}).Error("Failed to insert news category")
 				return 0, fmt.Errorf("failed to insert category: %w", err)
 			}
 		}
-
-		r.log.WithFields(logrus.Fields{
-			"news_id":    newsID,
-			"categories": len(*createForm.Categories),
-		}).Info("News categories added")
 	}
 
-	// Коммитим транзакцию
 	if err := tx.Commit(); err != nil {
 		r.log.WithError(err).Error("Failed to commit transaction")
 		return 0, fmt.Errorf("failed to commit transaction: %w", err)
 	}
+
+	r.log.WithFields(logrus.Fields{
+		"news_id": newsID,
+	}).Info("News created successfully")
 
 	return newsID, nil
 }
@@ -187,55 +175,3 @@ func (r *NewsRepository) UpdateNews(newsId uint64, updateFields map[string]inter
 	return nil
 
 }
-
-//func (r *NewsRepository) GetCategoriesForNews(newsID int64) ([]int64, error) {
-//	rows, err := r.db.Query("SELECT category_id FROM news_categories WHERE news_id = $1", newsID)
-//	if err != nil {
-//		return nil, err
-//	}
-//	defer rows.Close()
-//
-//	var categories []int64
-//	for rows.Next() {
-//		var categoryID int64
-//		if err := rows.Scan(&categoryID); err != nil {
-//			r.log.Errorf("Ошибка сканирования категории: %v", err)
-//			continue
-//		}
-//		categories = append(categories, categoryID)
-//	}
-//
-//	return categories, nil
-//}
-//
-//func (r *NewsRepository) UpdateCategories(newsID int64, categories []int64) error {
-//	tx, err := r.db.Begin()
-//	if err != nil {
-//		r.log.Errorf("Ошибка начала транзакции: %v", err)
-//		return err
-//	}
-//	defer tx.Rollback()
-//
-//	// Удаляем старые категории
-//	_, err = tx.Exec("DELETE FROM news_categories WHERE news_id = $1", newsID)
-//	if err != nil {
-//		r.log.Errorf("Ошибка удаления категорий для новости ID=%d: %v", newsID, err)
-//		return err
-//	}
-//
-//	// Добавляем новые категории
-//	for _, categoryID := range categories {
-//		_, err = tx.Exec("INSERT INTO news_categories (news_id, category_id) VALUES ($1, $2)", newsID, categoryID)
-//		if err != nil {
-//			r.log.Errorf("Ошибка добавления категории %d для новости ID=%d: %v", categoryID, newsID, err)
-//			return err
-//		}
-//	}
-//
-//	if err := tx.Commit(); err != nil {
-//		r.log.Errorf("Ошибка коммита транзакции: %v", err)
-//		return err
-//	}
-//
-//	return nil
-//}
