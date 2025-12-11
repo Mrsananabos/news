@@ -1,0 +1,1 @@
+INSERT INTO news_categories (news_id, category_id) VALUES ($1, $2)

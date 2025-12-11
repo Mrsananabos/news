@@ -56,7 +56,7 @@ func (h *NewsHandler) CreateNews(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Status(fiber.StatusOK).JSON(SuccessResponseCreate{
+	return c.Status(fiber.StatusCreated).JSON(SuccessResponseCreate{
 		Success: true,
 		Id:      id,
 	})
@@ -64,7 +64,7 @@ func (h *NewsHandler) CreateNews(c *fiber.Ctx) error {
 
 func (h *NewsHandler) EditNews(c *fiber.Ctx) error {
 	idParam := c.Params("id")
-	id, err := strconv.ParseUint(idParam, 10, 64)
+	id, err := strconv.ParseInt(idParam, 10, 64)
 	if err != nil {
 		return apperrors.NewBadRequest("Invalid ID format")
 	}
@@ -91,8 +91,8 @@ func (h *NewsHandler) EditNews(c *fiber.Ctx) error {
 func (h *NewsHandler) ListNews(c *fiber.Ctx) error {
 	var newsList []models.NewsWithCategories
 	//добавить валидацию
-	limit, err := strconv.ParseUint(c.Query("limit", "10"), 10, 64)
-	offset, err := strconv.ParseUint(c.Query("offset", "0"), 10, 64)
+	limit, err := strconv.ParseInt(c.Query("limit", "10"), 10, 64)
+	offset, err := strconv.ParseInt(c.Query("offset", "0"), 10, 64)
 
 	newsList, err = h.service.ListNews(limit, offset)
 	if err != nil {

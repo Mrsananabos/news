@@ -1,0 +1,1 @@
+DELETE FROM news_categories WHERE news_id = $1

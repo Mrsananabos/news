@@ -15,13 +15,13 @@ type NewsWithCategories struct {
 }
 
 type NewsEditForm struct {
-	Title      *string   `json:"title" validate:"omitempty" example:"Medicine"`
-	Content    *string   `json:"content" validate:"omitempty"`
-	Categories *[]uint64 `json:"categories" validate:"omitempty" `
+	Title      *string  `json:"title" validate:"omitempty"`
+	Content    *string  `json:"content" validate:"omitempty"`
+	Categories *[]int64 `json:"categories" validate:"omitempty" `
 }
 
 type NewsCreateForm struct {
-	Title      string   `json:"title" validate:"omitempty" example:"Medicine"`
+	Title      string   `json:"title" validate:"omitempty"`
 	Content    string   `json:"content" validate:"omitempty"`
 	Categories *[]int64 `json:"categories" validate:"omitempty" `
 }

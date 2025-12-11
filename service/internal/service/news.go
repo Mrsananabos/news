@@ -10,8 +10,8 @@ import (
 //go:generate mockery --name=INewsService --output=mocks --outpkg=mocks --case=snake --with-expecter
 type INewsService interface {
 	CreateNews(createForm models.NewsCreateForm) (int64, error)
-	EditNews(newsId uint64, editForm models.NewsEditForm) error
-	ListNews(limit, offset uint64) ([]models.NewsWithCategories, error)
+	EditNews(newsId int64, editForm models.NewsEditForm) error
+	ListNews(limit, offset int64) ([]models.NewsWithCategories, error)
 }
 type NewsService struct {
 	repo repository.INewsRepository
@@ -29,7 +29,7 @@ func (s *NewsService) CreateNews(editForm models.NewsCreateForm) (int64, error) 
 	return s.repo.CreateNews(editForm)
 }
 
-func (s *NewsService) EditNews(newsId uint64, editForm models.NewsEditForm) error {
+func (s *NewsService) EditNews(newsId int64, editForm models.NewsEditForm) error {
 	updateFields := make(map[string]interface{})
 	if editForm.Title != nil {
 		updateFields["title"] = editForm.Title
@@ -49,7 +49,7 @@ func (s *NewsService) EditNews(newsId uint64, editForm models.NewsEditForm) erro
 	return nil
 }
 
-func (s *NewsService) ListNews(limit, offset uint64) ([]models.NewsWithCategories, error) {
+func (s *NewsService) ListNews(limit, offset int64) ([]models.NewsWithCategories, error) {
 	//добавить валидацию лимита и оффсета
 	var newsList []models.NewsWithCategories
 
